@@ -1,0 +1,15 @@
+/Library/
+/Temp/
+/Obj/
+/Build/
+/Builds/
+/Logs/
+/UserSettings/
+/.vs/
+/obj/
+*.csproj
+*.sln
+*.vsconfig
+/.claude/
+.DS_Store
+Thumbs.db
