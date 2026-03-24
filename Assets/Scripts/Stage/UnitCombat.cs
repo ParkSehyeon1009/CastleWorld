@@ -30,8 +30,8 @@ public class UnitCombat : MonoBehaviour
 
         _attackTimer += Time.deltaTime;
 
-        float cooldown = _entity.Data.attackSpeed > 0f
-            ? 1f / _entity.Data.attackSpeed
+        float cooldown = _entity.GetAttackSpeed() > 0f
+            ? 1f / _entity.GetAttackSpeed()
             : 1f;
 
         if (_attackTimer < cooldown) return;
@@ -45,7 +45,7 @@ public class UnitCombat : MonoBehaviour
 
     Enemy FindNearestEnemy()
     {
-        float range = _entity.Data.range;
+        float range = _entity.GetRange();
         Collider2D[] hits = Physics2D.OverlapCircleAll(transform.position, range);
 
         Enemy   nearest     = null;
@@ -74,7 +74,7 @@ public class UnitCombat : MonoBehaviour
         GameObject go   = Instantiate(projectilePrefab, transform.position, Quaternion.identity);
         Projectile proj = go.GetComponent<Projectile>();
         if (proj != null)
-            proj.Init(target, _entity.Data.attackPower);
+            proj.Init(target, _entity.GetAttackPower());
     }
 
 #if UNITY_EDITOR
@@ -83,7 +83,7 @@ public class UnitCombat : MonoBehaviour
         if (_entity == null) _entity = GetComponent<UnitEntity>();
         if (_entity?.Data == null) return;
         Gizmos.color = new Color(1f, 1f, 0f, 0.25f);
-        Gizmos.DrawWireSphere(transform.position, _entity.Data.range);
+        Gizmos.DrawWireSphere(transform.position, _entity.GetRange());
     }
 #endif
 }

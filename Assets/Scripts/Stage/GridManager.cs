@@ -23,13 +23,15 @@ public class GridManager : MonoBehaviour
     public int sortingOrder = -1;
 
     // slots[col, row] = 배치된 UnitData (null이면 빈 칸)
-    private UnitData[,] slots;
+    private UnitData[,]   slots;
+    private UnitEntity[,] entities;
     private SpriteRenderer[,] cellRenderers;
 
     void Awake()
     {
         Instance = this;
-        slots = new UnitData[columns, rows];
+        slots    = new UnitData[columns, rows];
+        entities = new UnitEntity[columns, rows];
         GenerateCellVisuals();
     }
 
@@ -99,10 +101,25 @@ public class GridManager : MonoBehaviour
 
     public UnitData GetUnit(int col, int row) => slots[col, row];
 
+    /// <summary>배치된 UnitEntity 인스턴스 반환.</summary>
+    public UnitEntity GetEntity(int col, int row)
+    {
+        if (col < 0 || col >= columns || row < 0 || row >= rows) return null;
+        return entities[col, row];
+    }
+
+    /// <summary>UnitEntity 인스턴스를 슬롯에 등록.</summary>
+    public void RegisterEntity(int col, int row, UnitEntity entity)
+    {
+        if (col < 0 || col >= columns || row < 0 || row >= rows) return;
+        entities[col, row] = entity;
+    }
+
     public void RemoveUnit(int col, int row)
     {
         if (col < 0 || col >= columns || row < 0 || row >= rows) return;
-        slots[col, row] = null;
+        slots[col, row]    = null;
+        entities[col, row] = null;
         UpdateCellColor(col, row);
     }
 
@@ -113,6 +130,27 @@ public class GridManager : MonoBehaviour
         var sr = cellRenderers[col, row];
         if (sr == null) return;   // 씬 종료 시 자식이 먼저 파괴될 수 있음
         sr.color = slots[col, row] != null ? filledColor : emptyColor;
+    }
+
+    /// <summary>
+    /// 비어 있는 첫 번째 슬롯을 반환.
+    /// 채우는 순서: 상단 행 좌→우, 하단 행 좌→우 (row 큰 것이 상단).
+    /// </summary>
+    public bool FindFirstEmptySlot(out int col, out int row)
+    {
+        for (int r = rows - 1; r >= 0; r--)
+        {
+            for (int c = 0; c < columns; c++)
+            {
+                if (IsEmpty(c, r))
+                {
+                    col = c; row = r;
+                    return true;
+                }
+            }
+        }
+        col = -1; row = -1;
+        return false;
     }
 
     /// <summary>월드 좌표 → (col, row) 변환. 범위 밖이면 false.</summary>

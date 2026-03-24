@@ -35,9 +35,6 @@ void Start()
             for (int i = 0; i < countPerUnit; i++)
                 PlayerInventory.Instance.AddUnit(unit);
 
-        UnitPlacementPanel panel = FindFirstObjectByType<UnitPlacementPanel>();
-        panel?.RefreshPanel();
-
         Debug.Log($"[TestBootstrap] 유닛 {testUnits.Count}종 x{countPerUnit}개 지급 완료");
 
         if (autoStartBattle)
