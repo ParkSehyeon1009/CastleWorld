@@ -20,6 +20,7 @@ public class UnitData : ScriptableObject
     public float weight = 60f;
 
     [Header("스탯 (확장용)")]
+    public int maxHp = 50;
     public int attackPower = 10;
     public float attackSpeed = 1f;
     public float range = 3f;

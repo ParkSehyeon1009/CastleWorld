@@ -13,10 +13,14 @@ public class EnemyData : ScriptableObject
     [Header("스탯")]
     public int maxHp = 30;
     public float moveSpeed = 2f;
-
     [Header("캐슬 공격")]
     [Tooltip("캐슬에 도달했을 때 입히는 데미지")]
     public int castleDamage = 1;
+
+    [Header("유닛 공격")]
+    public int attackDamage = 5;
+    public float attackSpeed = 1f;
+    public float attackRange = 0.8f;
 
     [Header("보상")]
     [Tooltip("처치 시 지급되는 골드")]

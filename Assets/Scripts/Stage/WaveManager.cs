@@ -4,34 +4,34 @@ using UnityEngine;
 using UnityEngine.Events;
 
 /// <summary>
-/// 웨이브 순서대로 적을 스폰하고, 모든 적이 처리되면 다음 웨이브로 진행.
-/// StageManager.StartBattle() 호출 시 자동으로 시작됨.
+/// StageManager로부터 StageData를 받아 웨이브 순서대로 적을 스폰.
+/// 적은 그리드 위쪽 랜덤 열(column) 위치에서 스폰됩니다.
 /// </summary>
 public class WaveManager : MonoBehaviour
 {
     public static WaveManager Instance { get; private set; }
 
-    [Header("웨이브 설정")]
-    public WaveData[] waves;
-
     [Header("Enemy Prefab")]
-    [Tooltip("Enemy 컴포넌트가 붙은 기본 프리팹")]
     public GameObject enemyPrefab;
 
-    [Header("스폰 위치")]
-    public Transform spawnPoint;
+    [Header("스폰 설정")]
+    [Tooltip("그리드 상단으로부터 얼마나 위에 스폰할지 (월드 단위)")]
+    public float spawnYOffset = 4f;
+
+    [Header("폴백 웨이브 (StageData 미설정 시 사용)")]
+    [Tooltip("StageManager에 stages가 없을 때 직접 이 웨이브 목록을 사용합니다")]
+    public WaveData[] waves;
 
     // 이벤트
     public UnityEvent<int, int> OnWaveStart;   // (현재 웨이브, 전체 웨이브)
     public UnityEvent<int, int> OnWaveEnd;
-    public UnityEvent OnAllWavesCleared;
 
     private int _currentWaveIndex = 0;
     private int _aliveEnemyCount = 0;
     private bool _running = false;
+    private List<Enemy> _activeEnemies = new();
 
     public int CurrentWave => _currentWaveIndex + 1;
-    public int TotalWaves => waves != null ? waves.Length : 0;
 
     void Awake()
     {
@@ -47,40 +47,69 @@ public class WaveManager : MonoBehaviour
     void OnStateChanged(StageState state)
     {
         if (state == StageState.Battle)
-            StartCoroutine(RunWaves());
+        {
+            StageData stage = StageManager.Instance?.CurrentStage;
+            if (stage != null)
+            {
+                StartCoroutine(RunStage(stage));
+            }
+            else if (waves != null && waves.Length > 0)
+            {
+                // StageData 미설정 시 폴백: 직접 할당된 waves 사용
+                StartCoroutine(RunWaveArray(waves));
+            }
+            else
+            {
+                Debug.LogWarning("[WaveManager] 실행할 웨이브가 없습니다. StageManager에 StageData를 설정하거나 WaveManager의 waves 필드를 채우세요.");
+            }
+        }
     }
 
-    IEnumerator RunWaves()
+    // ─────────────────────────────────────────────
+    // 웨이브 실행
+    // ─────────────────────────────────────────────
+
+    IEnumerator RunStage(StageData stageData)
+    {
+        yield return StartCoroutine(RunWaveArray(stageData.waves));
+    }
+
+    IEnumerator RunWaveArray(WaveData[] waveArray)
     {
         if (_running) yield break;
         _running = true;
         _currentWaveIndex = 0;
+        _activeEnemies.Clear();
 
-        while (_currentWaveIndex < waves.Length)
+        if (waveArray == null || waveArray.Length == 0)
         {
-            yield return StartCoroutine(RunSingleWave(waves[_currentWaveIndex]));
+            _running = false;
+            StageManager.Instance?.OnAllWavesCleared();
+            yield break;
+        }
+
+        while (_currentWaveIndex < waveArray.Length)
+        {
+            yield return StartCoroutine(RunSingleWave(waveArray[_currentWaveIndex]));
             _currentWaveIndex++;
 
-            if (_currentWaveIndex < waves.Length)
-                yield return new WaitForSeconds(waves[_currentWaveIndex - 1].delayAfterWave);
+            if (_currentWaveIndex < waveArray.Length)
+                yield return new WaitForSeconds(waveArray[_currentWaveIndex - 1].delayAfterWave);
         }
 
         _running = false;
-        OnAllWavesCleared?.Invoke();
         StageManager.Instance?.OnAllWavesCleared();
     }
 
     IEnumerator RunSingleWave(WaveData waveData)
     {
-        OnWaveStart?.Invoke(CurrentWave, TotalWaves);
-        Debug.Log($"[WaveManager] Wave {CurrentWave}/{TotalWaves} 시작");
-
-        // 이번 웨이브 총 적 수 계산
         int total = 0;
         foreach (var g in waveData.enemyGroups) total += g.count;
         _aliveEnemyCount = total;
 
-        // 각 그룹 순서대로 스폰
+        OnWaveStart?.Invoke(CurrentWave, 0);
+        Debug.Log($"[WaveManager] Wave {CurrentWave} 시작 (적 {total}마리)");
+
         foreach (var group in waveData.enemyGroups)
         {
             for (int i = 0; i < group.count; i++)
@@ -90,31 +119,62 @@ public class WaveManager : MonoBehaviour
             }
         }
 
-        // 모든 적이 처리될 때까지 대기
+        // 모든 적 처리 대기
         yield return new WaitUntil(() => _aliveEnemyCount <= 0);
 
-        OnWaveEnd?.Invoke(CurrentWave, TotalWaves);
-        Debug.Log($"[WaveManager] Wave {CurrentWave}/{TotalWaves} 종료");
+        OnWaveEnd?.Invoke(CurrentWave, 0);
+        Debug.Log($"[WaveManager] Wave {CurrentWave} 종료");
     }
+
+    // ─────────────────────────────────────────────
+    // 스폰
+    // ─────────────────────────────────────────────
 
     void SpawnEnemy(EnemyData data)
     {
         if (enemyPrefab == null || data == null) return;
 
-        Vector3 pos = spawnPoint != null
-            ? spawnPoint.position
-            : WaypointPath.Instance?.GetWaypoint(0) ?? Vector3.zero;
-
-        GameObject go = Instantiate(enemyPrefab, pos, Quaternion.identity);
+        Vector3 spawnPos = GetSpawnPosition();
+        GameObject go = Instantiate(enemyPrefab, spawnPos, Quaternion.identity);
         Enemy enemy = go.GetComponent<Enemy>();
         if (enemy == null) return;
 
         enemy.Init(data);
         enemy.OnDead += OnEnemyDead;
+        _activeEnemies.Add(enemy);
+    }
+
+    Vector3 GetSpawnPosition()
+    {
+        GridManager grid = GridManager.Instance;
+        if (grid == null) return new Vector3(0f, spawnYOffset, 0f);
+
+        // 그리드 열(column) 중 랜덤 하나의 X 위치
+        int randomCol = Random.Range(0, grid.columns);
+        float spawnX = grid.GetSlotWorldPos(randomCol, 0).x;
+
+        // 그리드 상단 Y + 오프셋
+        float topRowY = grid.GetSlotWorldPos(0, grid.rows - 1).y;
+        float spawnY = topRowY + spawnYOffset;
+
+        return new Vector3(spawnX, spawnY, 0f);
     }
 
     void OnEnemyDead(Enemy enemy, bool wasKilled)
     {
+        _activeEnemies.Remove(enemy);
         _aliveEnemyCount = Mathf.Max(0, _aliveEnemyCount - 1);
+    }
+
+    // ─────────────────────────────────────────────
+    // 재시도 시 리셋 (StageManager가 RetryCurrentStage 처리하므로 자동 대기)
+    // ─────────────────────────────────────────────
+
+    public void StopAllWaves()
+    {
+        StopAllCoroutines();
+        _running = false;
+        _aliveEnemyCount = 0;
+        _activeEnemies.Clear();
     }
 }

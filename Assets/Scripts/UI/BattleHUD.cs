@@ -13,9 +13,13 @@ public class BattleHUD : MonoBehaviour
     void Start()
     {
         if (WaveManager.Instance != null)
-        {
             WaveManager.Instance.OnWaveStart.AddListener(OnWaveStart);
-            UpdateWave(0, WaveManager.Instance.TotalWaves);
+
+        if (StageManager.Instance != null)
+        {
+            StageManager.Instance.OnStageChanged.AddListener(OnStageChanged);
+            int total = StageManager.Instance.stages != null ? StageManager.Instance.stages.Length : 0;
+            UpdateWave(StageManager.Instance.CurrentStageIndex + 1, total);
         }
 
         if (PlayerWallet.Instance != null)
@@ -25,14 +29,16 @@ public class BattleHUD : MonoBehaviour
         }
     }
 
-    void OnWaveStart(int current, int total) => UpdateWave(current, total);
+    void OnWaveStart(int current, int total) { /* 웨이브 정보는 스테이지로 대체 */ }
+
+    void OnStageChanged(int stageNum, int totalStages) => UpdateWave(stageNum, totalStages);
 
     void OnGoldChanged(int gold) => UpdateGold(gold);
 
     void UpdateWave(int current, int total)
     {
         if (waveText != null)
-            waveText.text = $"Wave  {current} / {total}";
+            waveText.text = $"Stage  {current} / {total}";
     }
 
     void UpdateGold(int gold)

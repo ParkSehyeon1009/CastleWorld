@@ -2,72 +2,94 @@ using System;
 using UnityEngine;
 
 /// <summary>
-/// 웨이포인트를 따라 이동하다 캐슬 도달 시 데미지를 입힘.
-/// HP가 0이 되면 골드를 지급하고 소멸.
+/// 위에서 아래로 내려오며 유닛을 공격합니다.
+/// 유닛이 사거리 안에 있으면 멈추고 공격, 유닛 사망 시 계속 이동.
+/// 캐슬 Y 이하 도달 시 StageManager.OnEnemyBreached() 호출.
 /// </summary>
 public class Enemy : MonoBehaviour
 {
     public EnemyData data { get; private set; }
-
     public int CurrentHp { get; private set; }
 
-    /// <summary>사망 시 호출 (isDead: true = 처치, false = 캐슬 도달)</summary>
+    /// <summary>사망 시 (wasKilled: true=처치, false=캐슬 도달)</summary>
     public event Action<Enemy, bool> OnDead;
 
-    // 웨이포인트 이동 상태
-    private int _waypointIndex = 0;
     private bool _arrived = false;
+    private UnitEntity _currentTarget = null;
+    private float _attackTimer = 0f;
 
     public void Init(EnemyData enemyData)
     {
         data = enemyData;
         CurrentHp = data.maxHp;
-        _waypointIndex = 0;
         _arrived = false;
-
-        // 첫 번째 웨이포인트 방향으로 즉시 이동 시작
-        if (WaypointPath.Instance != null && WaypointPath.Instance.Count > 0)
-            transform.position = WaypointPath.Instance.GetWaypoint(0);
+        _currentTarget = null;
+        _attackTimer = 0f;
     }
 
     void Update()
     {
         if (_arrived) return;
-        if (WaypointPath.Instance == null) return;
+        if (data == null) return;
 
-        MoveAlongPath();
-    }
+        _currentTarget = FindNearestUnit();
 
-    void MoveAlongPath()
-    {
-        if (_waypointIndex >= WaypointPath.Instance.Count)
+        if (_currentTarget != null)
         {
-            ReachCastle();
-            return;
+            // 목표 유닛 X 위치로 수평 정렬
+            float targetX = _currentTarget.transform.position.x;
+            float dx = targetX - transform.position.x;
+            if (Mathf.Abs(dx) > 0.05f)
+            {
+                float step = data.moveSpeed * Time.deltaTime;
+                transform.position += new Vector3(Mathf.Sign(dx) * Mathf.Min(Mathf.Abs(dx), step), 0f);
+            }
+
+            // 공격 쿨다운
+            _attackTimer += Time.deltaTime;
+            float cooldown = data.attackSpeed > 0f ? 1f / data.attackSpeed : 1f;
+            if (_attackTimer >= cooldown)
+            {
+                _attackTimer = 0f;
+                _currentTarget.TakeDamage(data.attackDamage);
+            }
         }
-
-        Vector3 target = WaypointPath.Instance.GetWaypoint(_waypointIndex);
-        Vector3 dir = (target - transform.position).normalized;
-        transform.position += dir * data.moveSpeed * Time.deltaTime;
-
-        // 도착 판정
-        if (Vector3.Distance(transform.position, target) < 0.1f)
+        else
         {
-            _waypointIndex++;
-            if (_waypointIndex >= WaypointPath.Instance.Count)
+            // 아래로 이동
+            transform.position += Vector3.down * data.moveSpeed * Time.deltaTime;
+
+            // 캐슬 도달 판정
+            Castle castle = StageManager.Instance?.castle;
+            if (castle != null && transform.position.y <= castle.transform.position.y)
                 ReachCastle();
         }
+    }
+
+    UnitEntity FindNearestUnit()
+    {
+        UnitEntity[] all = FindObjectsByType<UnitEntity>(FindObjectsSortMode.None);
+        UnitEntity nearest = null;
+        float nearestDist = float.MaxValue;
+
+        foreach (var u in all)
+        {
+            if (u.CurrentHp <= 0) continue;
+            float dist = Vector2.Distance(transform.position, u.transform.position);
+            if (dist <= data.attackRange && dist < nearestDist)
+            {
+                nearestDist = dist;
+                nearest = u;
+            }
+        }
+        return nearest;
     }
 
     void ReachCastle()
     {
         if (_arrived) return;
         _arrived = true;
-
-        Castle castle = FindFirstObjectByType<Castle>();
-        if (castle != null)
-            castle.TakeDamage(data.castleDamage);
-
+        StageManager.Instance?.OnEnemyBreached(this);
         OnDead?.Invoke(this, false);
         Destroy(gameObject);
     }
@@ -76,7 +98,6 @@ public class Enemy : MonoBehaviour
     public void TakeDamage(int damage)
     {
         if (_arrived || CurrentHp <= 0) return;
-
         CurrentHp -= damage;
         if (CurrentHp <= 0)
             Die();
@@ -87,11 +108,19 @@ public class Enemy : MonoBehaviour
         if (_arrived) return;
         _arrived = true;
 
-        // 골드 지급
         if (PlayerWallet.Instance != null)
             PlayerWallet.Instance.Earn(data.goldReward);
 
         OnDead?.Invoke(this, true);
+        Destroy(gameObject);
+    }
+
+    /// <summary>StageManager가 재시도 시 강제 제거</summary>
+    public void ForceKill()
+    {
+        if (_arrived) return;
+        _arrived = true;
+        OnDead?.Invoke(this, false);
         Destroy(gameObject);
     }
 }

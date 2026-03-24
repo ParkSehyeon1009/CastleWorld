@@ -10,7 +10,7 @@ public class TestBootstrap : MonoBehaviour
 {
 
 [Header("자동 전투 시작 (테스트용)")]
-    public bool autoStartBattle = true;
+    public bool autoStartBattle = false;
     public float autoStartDelay = 2f;
 
     [Header("테스트용 지급 유닛 목록")]
