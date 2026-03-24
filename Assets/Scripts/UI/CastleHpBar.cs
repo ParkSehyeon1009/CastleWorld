@@ -18,13 +18,14 @@ public class CastleHpBar : MonoBehaviour
             castle = FindFirstObjectByType<Castle>();
 
         if (castle != null)
-        {
-            castle.OnHpChanged.AddListener(OnHpChanged);
             UpdateBar(castle.CurrentHp, castle.maxHp);
-        }
     }
 
-    void OnHpChanged(int current, int max) => UpdateBar(current, max);
+    void Update()
+    {
+        if (castle != null)
+            UpdateBar(castle.CurrentHp, castle.maxHp);
+    }
 
     void UpdateBar(int current, int max)
     {

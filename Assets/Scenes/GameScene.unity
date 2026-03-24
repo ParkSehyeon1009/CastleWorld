@@ -772,7 +772,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 58962858287e9384c86dd86ef44b09c9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Castle
-  maxHp: 20
+  maxHp: 3
   OnHpChanged:
     m_PersistentCalls:
       m_Calls: []
@@ -2063,7 +2063,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8499ba377bbbf194eaad925127092183, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CastleHpBar
-  castle: {fileID: 0}
+  castle: {fileID: 510938779}
   fillImage: {fileID: 191669770}
   hpText: {fileID: 2028698436}
 --- !u!114 &1957384744

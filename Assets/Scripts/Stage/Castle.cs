@@ -4,7 +4,7 @@ using UnityEngine.Events;
 public class Castle : MonoBehaviour
 {
     [Header("Stats")]
-    public int maxHp = 20;
+    public int maxHp = 3;
 
     public int CurrentHp { get; private set; }
 
