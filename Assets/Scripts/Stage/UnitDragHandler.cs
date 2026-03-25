@@ -54,15 +54,19 @@ public class UnitDragHandler : MonoBehaviour
             _sr.sortingOrder   = 50;
         }
 
-        // 그리드에서 임시 해제 (다른 유닛이 이 슬롯을 빈 칸으로 인식하지 않도록)
         GridManager.Instance.RemoveUnit(_originalCol, _originalRow);
-        _entity.SetGridPosition(-1, -1); // OnDestroy 중복 제거 방지
+        _entity.SetGridPosition(-1, -1);
+
+        SellZoneUI.Instance?.Show();
     }
 
     void OnMouseDrag()
     {
         if (!_isDragging) return;
         transform.position = GetMouseWorldPos() + _dragOffset;
+
+        Vector2 screenPos = GetScreenPos();
+        SellZoneUI.Instance?.SetHighlight(SellZoneUI.Instance.IsOverSellZone(screenPos));
     }
 
     void OnMouseUp()
@@ -71,6 +75,18 @@ public class UnitDragHandler : MonoBehaviour
         _isDragging = false;
 
         if (_sr != null) _sr.sortingOrder = _originalSortOrder;
+
+        SellZoneUI.Instance?.Hide();
+
+        Vector2 screenPos = GetScreenPos();
+        if (SellZoneUI.Instance != null && SellZoneUI.Instance.IsOverSellZone(screenPos))
+        {
+            PlayerWallet.Instance?.Earn(SellZoneUI.SellPrice);
+            Debug.Log($"[Sell] {_entity.Data.unitName} 판매 +{SellZoneUI.SellPrice}G");
+            _entity.SetGridPosition(_originalCol, _originalRow);
+            Destroy(gameObject);
+            return;
+        }
 
         Vector3 dropPos = GetMouseWorldPos();
 
@@ -126,14 +142,18 @@ public class UnitDragHandler : MonoBehaviour
 
     static Vector3 GetMouseWorldPos()
     {
-        Vector3 screenPos = Input.mousePosition;
-#if UNITY_ANDROID || UNITY_IOS
-        if (Input.touchCount > 0)
-            screenPos = Input.GetTouch(0).position;
-#endif
-        Vector3 world = Camera.main.ScreenToWorldPoint(screenPos);
+        Vector3 world = Camera.main.ScreenToWorldPoint(GetScreenPos());
         world.z = 0f;
         return world;
+    }
+
+    static Vector2 GetScreenPos()
+    {
+#if UNITY_ANDROID || UNITY_IOS
+        if (Input.touchCount > 0)
+            return Input.GetTouch(0).position;
+#endif
+        return Input.mousePosition;
     }
 
     static bool IsPointerOverUI()
