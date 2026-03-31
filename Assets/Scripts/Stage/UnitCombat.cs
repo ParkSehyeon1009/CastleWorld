@@ -71,10 +71,19 @@ public class UnitCombat : MonoBehaviour
     {
         if (projectilePrefab == null) return;
 
+        _entity.SetSpumState(PlayerState.ATTACK);
+        StartCoroutine(ResetToIdleAfterDelay(0.5f));
+
         GameObject go   = Instantiate(projectilePrefab, transform.position, Quaternion.identity);
         Projectile proj = go.GetComponent<Projectile>();
         if (proj != null)
             proj.Init(target, _entity.GetAttackPower());
+    }
+
+    System.Collections.IEnumerator ResetToIdleAfterDelay(float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        _entity.SetSpumState(PlayerState.IDLE);
     }
 
 #if UNITY_EDITOR

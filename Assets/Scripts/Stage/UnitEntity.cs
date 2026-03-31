@@ -14,6 +14,8 @@ public class UnitEntity : MonoBehaviour
 
     private SpriteRenderer _sr;
     private TextMeshPro _levelText;
+    private SPUM_Prefabs _spum;
+    private PlayerState _spumState = PlayerState.IDLE;
 
     public void Init(UnitData data, int col, int row)
     {
@@ -24,10 +26,37 @@ public class UnitEntity : MonoBehaviour
         CurrentHp = GetMaxHp();
 
         _sr = GetComponent<SpriteRenderer>();
-        if (_sr != null && data.icon != null)
+
+        if (data.spumPrefab != null)
+        {
+            GameObject spumGo = Instantiate(data.spumPrefab, transform);
+            spumGo.transform.localPosition = Vector3.zero;
+
+            _spum = spumGo.GetComponent<SPUM_Prefabs>();
+            if (_spum != null)
+            {
+                if (!_spum.allListsHaveItemsExist())
+                    _spum.PopulateAnimationLists();
+                _spum.OverrideControllerInit();
+            }
+
+            if (_sr != null) _sr.enabled = false;
+        }
+        else if (_sr != null && data.icon != null)
+        {
             _sr.sprite = data.icon;
+        }
 
         RefreshLevelVisual();
+    }
+
+    /// <summary>SPUM 애니메이션 상태 전환 (UnitCombat 등에서 호출)</summary>
+    public void SetSpumState(PlayerState state) => _spumState = state;
+
+    void Update()
+    {
+        if (_spum == null) return;
+        _spum.PlayAnimation(_spumState, 0);
     }
 
     // ── 스케일된 스탯 (레벨당 +50%) ──────────────────────────

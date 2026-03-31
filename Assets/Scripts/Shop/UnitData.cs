@@ -19,6 +19,10 @@ public class UnitData : ScriptableObject
     [Range(0.1f, 100f)]
     public float weight = 60f;
 
+    [Header("SPUM 비주얼")]
+    [Tooltip("SPUM 프리팹을 지정하면 icon 대신 사용됩니다")]
+    public GameObject spumPrefab;
+
     [Header("스탯 (확장용)")]
     public int maxHp = 50;
     public int attackPower = 10;

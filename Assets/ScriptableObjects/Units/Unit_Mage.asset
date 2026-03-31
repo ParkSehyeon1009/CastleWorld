@@ -17,6 +17,9 @@ MonoBehaviour:
   icon: {fileID: 0}
   grade: 1
   weight: 20
+  spumPrefab: {fileID: 7149208551058607029, guid: 8e5c0f9a2756b4bd68bea643e5f2e029,
+    type: 3}
+  maxHp: 50
   attackPower: 25
   attackSpeed: 0.5
   range: 4
