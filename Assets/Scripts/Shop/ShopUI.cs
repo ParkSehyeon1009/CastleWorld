@@ -7,11 +7,17 @@ using TMPro;
 /// </summary>
 public class ShopUI : MonoBehaviour
 {
+    private const int SingleDrawCost = 500;
+    private const int TenDrawCost    = 4500;
+
     [Header("UI 참조")]
     [SerializeField] TMP_Text goldText;
     [SerializeField] Button closeButton;
     [SerializeField] Button singleDrawButton;
     [SerializeField] Button tenDrawButton;
+
+    [Header("가챠 연결")]
+    [SerializeField] GachaResultUI gachaResultUI;
 
     void OnEnable()
     {
@@ -37,6 +43,38 @@ public class ShopUI : MonoBehaviour
             tenDrawButton = transform.Find("TenDrawButton")?.GetComponent<Button>();
 
         closeButton?.onClick.AddListener(() => gameObject.SetActive(false));
+        singleDrawButton?.onClick.AddListener(OnSingleDraw);
+        tenDrawButton?.onClick.AddListener(OnTenDraw);
+    }
+
+    void OnSingleDraw()
+    {
+        if (GachaSystem.Instance == null || gachaResultUI == null) return;
+
+        if (!PlayerWallet.Instance.Spend(SingleDrawCost))
+        {
+            Debug.Log("[ShopUI] 골드 부족 (1뽑: 500G)");
+            return;
+        }
+
+        var result = GachaSystem.Instance.DrawOne();
+        if (result != null) PlayerInventory.Instance?.AddUnit(result);
+        gachaResultUI.ShowSingleResult(result);
+    }
+
+    void OnTenDraw()
+    {
+        if (GachaSystem.Instance == null || gachaResultUI == null) return;
+
+        if (!PlayerWallet.Instance.Spend(TenDrawCost))
+        {
+            Debug.Log("[ShopUI] 골드 부족 (10뽑: 4500G)");
+            return;
+        }
+
+        var results = GachaSystem.Instance.DrawTen();
+        PlayerInventory.Instance?.AddUnits(results);
+        gachaResultUI.ShowTenResult(results);
     }
 
     void RefreshGoldUI()
