@@ -9,28 +9,27 @@ public class PlayerMovement : MonoBehaviour
     [Header("가상 조이스틱")]
     public VirtualJoystick joystick;
 
-    [Header("맵 경계 (벽 안쪽 기준)")]
-    public float minX = 1.5f;
-    public float maxX = 38.5f;
-    public float minY = 1.5f;
-    public float maxY = 28.5f;
+    private Rigidbody2D rb;
+    private Vector2 moveDir;
+
+    void Awake()
+    {
+        rb = GetComponent<Rigidbody2D>();
+    }
 
     void Update()
     {
-        Vector2 dir = GetKeyboardInput();
+        moveDir = GetKeyboardInput();
 
-        if (dir == Vector2.zero && joystick != null)
-            dir = joystick.Direction;
+        if (moveDir == Vector2.zero && joystick != null)
+            moveDir = joystick.Direction;
 
-        Vector3 move = new Vector3(dir.x, dir.y, 0f);
-        if (move.sqrMagnitude > 1f) move.Normalize();
+        if (moveDir.sqrMagnitude > 1f) moveDir.Normalize();
+    }
 
-        transform.Translate(move * moveSpeed * Time.deltaTime);
-
-        Vector3 pos = transform.position;
-        pos.x = Mathf.Clamp(pos.x, minX, maxX);
-        pos.y = Mathf.Clamp(pos.y, minY, maxY);
-        transform.position = pos;
+    void FixedUpdate()
+    {
+        rb.MovePosition(rb.position + moveDir * moveSpeed * Time.fixedDeltaTime);
     }
 
     Vector2 GetKeyboardInput()
